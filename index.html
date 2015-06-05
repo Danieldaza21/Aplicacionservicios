@@ -18,11 +18,13 @@ $(document).on("pageinit","#Principal", function(e, data){
  var defaultPos;
  var marca;
  var infoVentanta;
+ defaultPos=new  google.maps.LatLng(19.463948, -97.686259);
+ opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
  
    document.addEventListener("deviceready", onDeviceReady, false);
     function onDeviceReady(){
 	$("#btnConsServ").tap(function (){//Evento de botón para consultar los servicios de la base de datos
-	 defaultPos=new  google.maps.LatLng(19.463948, -97.686259);
+	 //defaultPos=new  google.maps.LatLng(19.463948, -97.686259);
 	    miOptions={
 	      zoom:16,
 	      center:defaultPos,
@@ -30,7 +32,7 @@ $(document).on("pageinit","#Principal", function(e, data){
 	      mapTypeId:google.maps.MapTypeId.ROADMAP};
 		  
 	  map= new google.maps.Map(document.getElementById("map-canvas"),miOptions);
-	  obtenerUbicacion();
+	  //obtenerUbicacion();
 	  obtenerMarcas();
 	});
 	
@@ -102,8 +104,8 @@ $(document).on("pageinit","#Principal", function(e, data){
     
     function obtenerUbicacion(){//Funcion que obtiene la Ubicación del dispositivo móvil
     
+    function obtenerUbicacion(){//Funcion que obtiene la Ubicación del dispositivo móvil
     if(navigator.geolocation){	
-      var opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
       navigator.geolocation.getCurrentPosition(exito, falla, opciones);
       
 	  function exito(posic){
@@ -135,10 +137,10 @@ $(document).on("pageinit","#Principal", function(e, data){
     }	
     
         function obtenerMarcas(){
-	  var opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
-	  navigator.geolocation.getCurrentPosition(exito, falla, opciones);
-	  if(navigator.geolocation){	
-	    function exito(posic){	      	      	         	     
+	  //var opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
+	  //navigator.geolocation.getCurrentPosition(exito, falla, opciones);
+	  //if(navigator.geolocation){	
+	    //function exito(posic){	      	      	         	     
 	      $.ajax({
 		type:"POST",
 		url:"http://aguilardaza.260mb.net/consultaServ.php",
@@ -161,7 +163,7 @@ $(document).on("pageinit","#Principal", function(e, data){
 	      }
 	    }
 	 }
-	    function falla(error){
+	  /*  function falla(error){
 	      alert("Error en el servicio Geolocalizador");
 	      dibujarMarcas(defaultPos);
 	    }
@@ -169,17 +171,17 @@ $(document).on("pageinit","#Principal", function(e, data){
 	    }else{
 	      dibujarMarcas(defaultPos);
 	    }
-	}
+	}*/
 
 
     function dibujarMarcas(nombre, dir, tel, mail, lat, lng, ruta){//habilitar esta función
- 
+ alert("si llego: Lat:"+lat+" Long:"+lng+" ruta: "+ruta );
          var latlng=new google.maps.LatLng(lat,lng);
   	 	  
 	  var marca2=new google.maps.Marker({
 	      position:latlng,
 	      map:map,
-	      title:"Mi posición",
+	      title:nombre,
 	      animation:google.maps.Animation.DROP
 	  });
 	  
@@ -188,7 +190,7 @@ $(document).on("pageinit","#Principal", function(e, data){
 	    //content:"<p>Tu posicion actual es: </p>"+latlng
 	    content:'<div style="width:200px; height:160px;"><div style="text-align: center; color:#5c041b; font-weight:bolder; font-size:12px; font-family:arial;">' + nombre + '</div><img src="'+ruta+'" width="100" heigth="60" /><div style="text-align:center; color: #2e20b8; font-size:12px; font-family:arial; width:200px; text-align:center;">' + dir + '</div><div>Tel: ' + tel + '</div><div>Email:' + mail + '</div>'
 	  });
-	  google.maps.event.addListener(marca2, "click", function(){infoVentanta2.open(map,this);});
+	  google.maps.event.addListener(marca2, "click", function(){infoVentanta2.open(map,marca2);});
     }
      });
        
