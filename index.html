@@ -1,0 +1,454 @@
+<!DOCTYPE html> 
+<html>
+<head>
+<meta charset="utf-8">
+<title>BANCOS EN PUEBLA</title>
+<link rel="stylesheet" type="text/css" href="css/jquery.mobile-1.4.5.min.css" />
+<link rel="stylesheet" type="text/css" href="css/jquery-ui.css" />
+<script src="cordova.js"></script>
+<script src="js/jquery.min.js" type="text/javascript"></script>
+<script src="js/jquery-ui.js" type="text/javascript"></script>
+<script src="js/jquery.mobile-1.4.5.min.js" type="text/javascript"></script>
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+<script type="text/javascript">
+$(document).on("pageinit","#Principal", function(e, data){
+
+ var mapa;
+ var miOptions;
+ var defaultPos;
+ var marca;
+ var infoVentanta;
+ 
+   document.addEventListener("deviceready", onDeviceReady, false);
+    function onDeviceReady(){
+	$("#btnConsServ").tap(function (){//Evento de botón para consultar los servicios de la base de datos
+	 defaultPos=new  google.maps.LatLng(19.463948, -97.686259);
+	    miOptions={
+	      zoom:16,
+	      center:defaultPos,
+	      disableDefaultUI:true,
+	      mapTypeId:google.maps.MapTypeId.ROADMAP};
+		  
+	  map= new google.maps.Map(document.getElementById("map-canvas"),miOptions);
+	  obtenerUbicacion();
+	  obtenerMarcas();
+	});
+	
+	$("#obtenercord").tap(function(){//Obtener coordenadas para el registro del servicio 
+	  obtenerUbicacion();	    	  
+	});    
+	
+	$("#btnTomarFoto").tap(function (){//Capturar fotografia
+            navigator.device.capture.captureImage(function(mediaFiles){
+		path = mediaFiles[0].fullPath;
+		$('#regFoto').append('<br><img id="imagen" src="'+path+'" width="100%" />').attr('rel',path);
+	    },function(error){
+		navigator.notification.alert('Error code: ' + error.code, null, 'Capture Error');
+	    },{limit:1});            
+         });   
+         
+        $("#btnGuardar").tap(function (){	          
+	   // alert("ruta: "+$("#imagen").attr("src"));
+	      if($("#imagen").attr("src")==""){
+		alert("Antes de registrar el servicio debe tomar una fotografía del mismo ");
+	      }else{			
+		var nom=$("#Nombre").val();
+		var dir=$("#Direccion").val();
+		var tel=$("#Telefono").val();
+		var email=$("#Email").val();
+		var lat=$("#obtLatitud").val();
+		var lon=$("#obtLongitud").val();
+		
+		$.ajax({
+		  type:"POST",
+		  url:"http://aguilardaza.260mb.net/guardarServicios.php",
+		  //url:"guardarServicios.php",
+		  data:"nombre="+nom+"&dir="+dir+"&tel="+tel+"&email="+email+"&lat="+lat+"&long="+lon,
+		  success: guardandoServicios		  		
+		});
+		
+		function guardandoServicios(datos){
+		  alert("Respuesta: "+datos);
+		}
+		uploadPhoto($("#imagen").attr("src"));	
+	    }
+        });
+  	
+    }
+    	
+	     
+
+    
+    
+ function uploadPhoto(foto) {  
+	//alert("si entro: "+foto);
+	var options = new FileUploadOptions();
+	options.fileKey="file";
+	options.fileName=$("#Nombre").val();
+	options.mimeType="image/jpeg";
+        //alert("si entro a upload: "+options.fileName);
+	var params = {};
+	params.value1 = "test";
+	params.value2 = "param";
+	options.params = params;
+
+	var ft = new FileTransfer();
+	ft.upload(foto,"http://aguilardaza.260mb.net/upload.php",function(r){		
+		navigator.notification.confirm("El archivo: "+r.response,null, "Notificacion");
+	}, function(err){
+		navigator.notification.alert("Error: "+err.code+" detalle: "+err.response,null, "Error de Envío");
+	}, options);
+}
+    
+    function obtenerUbicacion(){//Funcion que obtiene la Ubicación del dispositivo móvil
+    
+    if(navigator.geolocation){	
+      var opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
+      navigator.geolocation.getCurrentPosition(exito, falla, opciones);
+      
+	  function exito(posic){
+	      var corUbic=new google.maps.LatLng(posic.coords.latitude, posic.coords.longitude);
+	      $("#obtLatitud").val(posic.coords.latitude);
+	      $("#obtLongitud").val(posic.coords.longitude);
+	      marca=new google.maps.Marker({
+		  position:corUbic,
+		  map:map,
+		  title:"Usted esta ubicado aqui",
+		  animation:google.maps.Animation.DROP
+	      });
+
+	      infoVentanta=new google.maps.InfoWindow({
+		  position:corUbic,
+		  content:"<p>Tu Ubicación es: </p>"+corUbic
+	      });
+	     
+	      google.maps.event.addListener(marca, "click", function(){infoVentanta.open(map,this);});	 	      	       
+	  }
+	
+	  function falla(error){
+	      alert("Error en el servicio Geolocalizador");
+	  }
+	  	      
+	  }else{
+	      alert("Su dispositivo no soporta la geolocalización o no esta habilitada esta funcionalidad");
+	  }	 
+    }	
+    
+        function obtenerMarcas(){
+	  var opciones={maximumAge:500000,enableHighAccuracy:true,timeout:5000};
+	  navigator.geolocation.getCurrentPosition(exito, falla, opciones);
+	  if(navigator.geolocation){	
+	    function exito(posic){	      	      	         	     
+	      $.ajax({
+		type:"POST",
+		url:"http://aguilardaza.260mb.net/consultaServ.php",
+		data:"",
+		success: serviciosConsultados
+	      });	     
+	      
+	      function serviciosConsultados(datos){
+		var respDatos=$.parseJSON(datos); 
+		var nombre, dir, tel, mail, lat, lng, ruta;
+		for(var i in respDatos){		 
+		  nombre=respDatos[i].Nombre;
+		  dir=respDatos[i].Direccion;
+		  tel=respDatos[i].Telefono;
+		  mail=respDatos[i].Email;
+		  lat=respDatos[i].Latitud; 
+		  lng=respDatos[i].Longitud;
+		  ruta=respDatos[i].Foto;
+		  dibujarMarcas(nombre, dir, tel, mail, lat, lng, ruta);
+	      }
+	    }
+	 }
+	    function falla(error){
+	      alert("Error en el servicio Geolocalizador");
+	      dibujarMarcas(defaultPos);
+	    }
+	  	      
+	    }else{
+	      dibujarMarcas(defaultPos);
+	    }
+	}
+
+
+    function dibujarMarcas(nombre, dir, tel, mail, lat, lng, ruta){//habilitar esta función
+ 
+         var latlng=new google.maps.LatLng(lat,lng);
+  	 	  
+	  var marca2=new google.maps.Marker({
+	      position:latlng,
+	      map:map,
+	      title:"Mi posición",
+	      animation:google.maps.Animation.DROP
+	  });
+	  
+	  var infoVentanta2=new google.maps.InfoWindow({
+	    position:latlng,
+	    //content:"<p>Tu posicion actual es: </p>"+latlng
+	    content:'<div style="width:200px; height:160px;"><div style="text-align: center; color:#5c041b; font-weight:bolder; font-size:12px; font-family:arial;">' + nombre + '</div><img src="'+ruta+'" width="100" heigth="60" /><div style="text-align:center; color: #2e20b8; font-size:12px; font-family:arial; width:200px; text-align:center;">' + dir + '</div><div>Tel: ' + tel + '</div><div>Email:' + mail + '</div>'
+	  });
+	  google.maps.event.addListener(marca2, "click", function(){infoVentanta2.open(map,this);});
+    }
+     });
+       
+     $(document).ready(function inicio(){
+      function dibujarTabla(respConAct, respCarga) {
+   respConAct.html("");
+   respConAct.append('<table id="tab" border="1">');
+    var tabla=$("#tab");
+    tabla.html("<tr><th>ID</th><th>Nombre</th><th>Direccion</th><th>Telefono</th><th>Foto</th><th>Email</th><th>Latitud</th><th>Longitud</th></tr>");
+    for(var i in respCarga){
+      tabla.append("<tr><td>"+respCarga[i].Id_Servicio+"</td>"
+      +"<td>"+respCarga[i].Nombre+"</td>"
+      +"<td>"+respCarga[i].Direccion+"</td>"
+      +"<td>"+respCarga[i].Telefono+"</td>"
+      +"<td>"+respCarga[i].Foto+"</td>"
+        +"<td>"+respCarga[i].Email+"</td>"
+      +"<td>"+respCarga[i].Latitud+"</td>"
+      +"<td>"+respCarga[i].Longitud+"</td></tr>");
+      }
+    tabla.append("</table>"); }
+      
+      
+     var btnConsAct=$("#btnConsAct");
+     btnConsAct.click(function cargarDat(){
+     $.ajax({
+      type:"POST",
+      url:"http://aguilardaza.260mb.net/consultaServ.php",
+      data:"",
+      success: cargarDato
+    });
+     function cargarDato(datos) {
+     
+        var respCarga=$.parseJSON(datos);
+        var respConAct=$("#respConAct");
+        dibujarTabla(respConAct,respCarga);
+     }
+ });
+
+   
+
+ var btnCarDatos=$("#btnCarDatos");
+ btnCarDatos.click(function cargarInf(){
+    var Id=parseInt($("#nomActualizar").val());
+    $.ajax({
+    type:"POST",
+    url:"http://aguilardaza.260mb.net/consultaid.php",
+    data:"Id="+Id,
+    success: cargarDatosAct
+        });
+    alert("listo");
+    function cargarDatosAct(datos) {
+    
+        var consDatAct=$.parseJSON(datos);
+        var respCargDatos=$("#respCargDatos");//Div del resultado para dibukar control
+        respCargDatos.html("<label>ID:</label><input type='text' id='Id' disabled='yes'>");
+        respCargDatos.append("<label>Nombre:</label><input type='text' id='nombre'>");
+        respCargDatos.append("<label>Direccion:</label><input type='text' id='dir'>");
+        respCargDatos.append("<label>Telefono:</label><input type='text' id='tel'>");
+	respCargDatos.append("<label>Email:</label><input type='text' id='email'>");
+	respCargDatos.append("<label>Latitud:</label><input type='text' id='lat'>");
+	respCargDatos.append("<label>Longitud:</label><input type='text' id='long'>");
+        var Id=$("#Id");
+        var nom=$("#nombre");
+        var dir=$("#dir");
+        var tel=$("#tel");
+	var email=$("#email");
+	var lat=$("#lat");
+	var long=$("#long");
+        for (var i in consDatAct) {
+            Id.val(consDatAct[i].Id_Servicio);
+            nom.val(consDatAct[i].Nombre);
+            dir.val(consDatAct[i].Direccion);
+            tel.val(consDatAct[i].Telefono);
+	    email.val(consDatAct[i].Email);
+	    lat.val(consDatAct[i].Latitud);
+	    long.val(consDatAct[i].Longitud);
+        }
+    }
+ });
+  var btnGuarDatos=$('#btnGuarDatos'); //Actualiza los datos
+  btnGuarDatos.click(function actual(){
+    var id=parseInt($('#Id').val());
+    var nombre=$('#nombre').val();
+    var dir=$('#dir').val();
+    var tel=$('#tel').val();
+    var email=$('#email').val(); 
+    var lat=$('#lat').val();
+     var long=$('#long').val();
+  
+  if (nombre==""||dir==""||tel==""||email==""||lat==""||long=="" ) {
+    alert("ingresa información en todos los campos");
+  }else{
+    $.ajax({
+      type:"POST",
+      url:"http://aguilardaza.260mb.net/actualizar.php",
+      data:"id="+id+"&nombre="+nombre+"&dir="+dir+"&tel="+tel+"&email="+email+"&lat="+lat+"&long="+long,
+      success: actualizacion
+      
+    });
+  }
+  function actualizacion(datos){
+  alert("datos: "+datos);
+
+  }
+  });
+    
+var btnConsEliminar=$("#btnConsEliminar");
+  btnConsEliminar.click(function conEliminar(){
+    $.ajax({
+      type:"POST",
+      url:"http://aguilardaza.260mb.net/consultaServ.php",
+      data:"",
+      success:consultaAntEliminar
+    });
+    function consultaAntEliminar(datos) {
+      var datAntEliminar=$.parseJSON(datos);
+      var respConElim=$("#respConElim");
+      dibujarTabla(respConElim,datAntEliminar);
+    }
+  });
+  
+  var btnEliminar=$("#btnEliminar");
+  btnEliminar.click(function eliminarDato(){
+    var idEliminar=parseInt($("#idEliminar").val());
+	$.ajax({
+      type:"POST",
+      url:"http://aguilardaza.260mb.net/eliminar.php",
+      data:"Id="+idEliminar,
+      success:Eliminacion		      
+  });
+	function Eliminacion(datos) {
+	  alert(datos);
+	}
+ });
+    
+    
+    });
+    
+
+</script>
+<style >
+#map-canvas{
+  height:95%;
+  width:100%;
+  padding:0px;
+  position: absolute;
+  top:45px;
+  right:0px;
+  bottom:40px;
+  left:0px;
+}
+
+p{
+text-align:center;
+}
+</style>
+
+</head>
+
+
+<body>
+ 
+<div data-role="page" id="Principal">
+      <div data-role="header">
+	<h1>BANCOS EN PUEBLA</h1>
+      </div>
+      <div data-role="content" >  
+	  <ol data-role="listview">
+	    <h3>MENU DE CONTROL DE BANCOS</h3>
+	    <li><a href="#Registrar">REGISTRAR UN BANCO</a></li>
+	    <li><a href="#Consultar">CONSULTAR TODOS LOS REGISTROS</a></li>
+	    <li><a href="#actualizar">ACTUALIZAR REGISTROS</a></li>
+	    <li><a href="#eliminar">ELIMINAR REGISTROS</a></li>
+	  </ol>
+      </div>
+      <div data-role="footer" data-position="fixed" style="text-align:center;">
+	<div data-role="controlgroup" data-type="horizontal">
+	<a href="#bienvenida" class="ui-btn ui-icon-home ui-btn-icon-left">Regresar</a>
+	</div>
+      </div>
+</div>
+
+<div data-role="page" id="Registrar">
+      <div data-role="header" data-position="fixed">
+	<h1>REGISTRO DE BANCOS</h1>
+      </div>
+      <div data-role="content" > 
+	  <input type="text" id="Nombre" placeholder="Nombre del Banco" />
+	  <input type="text" id="Direccion" placeholder="Dirección" />
+	  <input type="text" id="Telefono" placeholder="Teléfono" />
+	  <input type="text" id="Email" placeholder="Email" />
+	  <input type="button" id="btnTomarFoto" value="Tomar Foto" >
+	  <div id="regFoto"><!--img id="imagen2" src="images.jpg" rel="images.jpg" /--></div>
+	  <input type="text" id="obtLatitud" placeholder="Longitud" />
+	  <input type="text" id="obtLongitud" placeholder="Longitud" />
+	  <input type="button" id="obtenercord" value="Obtener coordenadas" />
+	  <input type="button" id="btnGuardar" value="Guardar" />
+      </div>
+      <div data-role="footer" data-position="fixed" style="text-align:center;">
+	<div data-role="controlgroup" data-type="horizontal">
+	  <a href="#Principal" class="ui-btn ui-icon-home ui-btn-icon-left">Regresar</a><br/>
+	  
+	</div>
+	
+      </div>
+</div>
+
+<div data-role="page" id="Consultar" data-url="map-page">
+      <div data-role="header" data-position="fixed">
+	<h1>UBICACION DEL BANCO</h1>
+      </div>
+      <div data-role="content" >  
+	  <div id="map-canvas">Pulse Consultar para identificar su ubicación en el mapa</div>
+      </div>
+      <div data-role="footer" data-position="fixed" style="text-align:center;">
+	<div data-role="controlgroup" data-type="horizontal">
+	<a href="#Principal" class="ui-btn ui-icon-home ui-btn-icon-left">Regresar</a>
+	<a href="#" class="ui-btn ui-icon-search ui-btn-icon-left" id="btnConsServ">Consultar</a>
+	</div>
+	
+      </div>
+</div>
+
+<div data-role="page" id="actualizar">
+  <div data-role="header" >
+    <p>ACTUALIZAR REGISTROS</p>
+  </div>
+  <div data-role="content">
+    <input type="button" id="btnConsAct" value="Cargar Registros">
+        <div id="respConAct"></div>
+        <label for="nomActualizar">ID a actualizar</label>
+        <input type="text" id="nomActualizar">
+        <input type="button" id="btnCarDatos" value="Cargar Datos">
+            <div id="respCargDatos"></div>
+        <input type="button" id="btnGuarDatos" value="Guardar"> 
+  </div>
+  <div data-role="footer" data-position="fixed" style="text-align:center;">
+	<div data-role="controlgroup" data-type="horizontal">
+	<a href="#Principal" class="ui-btn ui-icon-home ui-btn-icon-left">Regresar</a>
+  </div>
+</div>
+</div>
+
+<div data-role="page" id="eliminar">
+  <div data-role="header" >
+    <p>ELIMINAR REGISTROS</p>
+  </div>
+  <div data-role="content">
+    <input type="button" id="btnConsEliminar" value="Mostrar todos los registros">
+        <div id="respConElim"></div>
+        <label for="idEliminar">ID a Eliminar</label>
+        <input type="text" id="idEliminar">
+        <input type="button" id="btnEliminar" value="Eliminar"> 
+  </div>
+    <div data-role="footer" data-position="fixed" style="text-align:center;">
+	<div data-role="controlgroup" data-type="horizontal">
+	  <a href="#Principal" class="ui-btn ui-icon-home ui-btn-icon-left">Regresar</a>
+	</div>
+      </div>
+   </div>
+
+</body>
+</html>
